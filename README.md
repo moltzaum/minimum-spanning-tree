@@ -1,5 +1,38 @@
 ### minimum-spanning-tree
 
+**Data Structures and Algorithms**
+
+While loading the file, I skip a number of lines that are duplicates. This greatly speeds up the program since IO is the bottleneck.
+
+```
+1 1 (skip)
+1 2
+1 3
+2 1 (skip)
+2 2 (skip)
+2 3
+3 1 (skip)
+3 2 (skip)
+3 3 (skip)
+```
+
+For the implementation of the mst, I use a variant of Kruskal's algorithm. Because the requirements specify that the weights are restricted from 0 to 100, I use them to index the edges with the smallest weights first.
+
+In order to find the minimum spanning tree, we must know if adding an edge will create a loop. Suppose in the graph below, we have already added (4, 5) and (2, 4), then adding (2, 5) would create a loop. We can determine if adding an edge will create a loop by using subtrees. If nodes 2, 4, and 5 belong to a subtree of '0', then making a new edge between any of the points 2, 4, and 5 will create a loop within the subtree of '0'.
+
+```
+ (1)
+ |  \
+ |   (2) -- (4)
+ \   /  \   /
+  (3) -- (5)
+```
+
+If two subtrees exist, we should be able to join them. If (1, 3) is a subtree of '0' and (2, 4) is a subtree of '1', how do I do I make a connection between (1, 2)? I can update node 2 to have the subtree of node 1 (or vice versa), but we should be able to update all nodes in the subtree if that subtree number has changed.
+
+In order to do this, I have typedef-ed the Subtree to be an integer pointer. Changing the value of the pointer affects all nodes pointing to the number.  
+`typedef int* Subtree`
+
 **Requirements**
 <pre>
 1.1 Input File  
