@@ -13,7 +13,7 @@ void handle_error(const char* str) {
 struct Edge;
 
 typedef int Node;
-typedef int** Subtree;
+typedef int* Subtree;
 typedef std::forward_list<Edge> Bucket;
 typedef Edge Graph[5000];
 
@@ -40,15 +40,15 @@ inline void skip_lines(std::istream& in, size_t n) {
 }
 
 inline Subtree mk_subtree(int n) {
-    Subtree subtree = new int*;
-    *subtree = new int;
-    **subtree = n;
+    Subtree subtree = new int;
+    *subtree = n;
     return subtree;
 }
 
 void print_mst(Graph mst, int edges) {
     for (int i = 0; i < edges; i++) {
         printf("(%d, %d)\n", mst[i].N1, mst[i].N2);
+        //printf("(%d, %d) = %d\n", mst[i].N1, mst[i].N2, mst[i].weight);
     }
 }
 
@@ -69,21 +69,21 @@ int get_mst(Graph mst, int &edges) {
             Subtree s1 = node_subtree[e.N1];
             Subtree s2 = node_subtree[e.N2];
             
-            if (**s1 == -1 && **s2 == -1) {
+            if (*s1 == -1 && *s2 == -1) {
                 //printf("make new subtree %d\n", auto_inc);
                 Subtree s3 = mk_subtree(auto_inc++);
                 node_subtree[e.N1] = s3;
                 node_subtree[e.N2] = s3;
                 
-            } else if (**s1 == -1) {
+            } else if (*s1 == -1) {
                 //printf("assign s2 subtree to s1 (whole thing)\n");
                 node_subtree[e.N1] = node_subtree[e.N2];
                 
-            } else if (**s2 == -1) {
+            } else if (*s2 == -1) {
                 //printf("assign s1 subtree to s2 (whole thing)\n");
                 node_subtree[e.N2] = node_subtree[e.N1];
                 
-            } else if (**s1 == **s2) {
+            } else if (*s1 == *s2) {
                 // adding edge will make a cycle
                 //printf("skip!\n");
                 continue;
