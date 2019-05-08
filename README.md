@@ -30,8 +30,7 @@ In order to find the minimum spanning tree, we must know if adding an edge will 
 
 If two subtrees exist, we should be able to join them. If (1, 3) is a subtree of '0' and (2, 4) is a subtree of '1', how do I do I make a connection between (1, 2)? I can update node 2 to have the subtree of node 1 (or vice versa), but we should be able to update all nodes in the subtree if that subtree number has changed.
 
-In order to do this, I have typedef-ed the Subtree to be an integer pointer. Changing the value of the pointer affects all nodes pointing to the number.  
-`typedef int* Subtree`
+In order to do this, I have an array called `follow_tree` that is initialied like so: `follow_tree[subtree] = subtree`. When I merge two subtrees I will update the entry for `tree1` to point to the entry for `tree2` like so: `follow_tree[tree1] = follow_tree[tree2]`. Then, on subsequent references to `follow_tree[tree1]`, we will go to the updated subtree. Sometimes this isn't the tree we need, so we loop until `follow_tree[n] = n`.
 
 **Requirements**
 <pre>
