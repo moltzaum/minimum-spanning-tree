@@ -240,21 +240,23 @@ int main(int argc, char*argv[]) {
     if (argc == 1) 
         handle_error("usage: mst <filename>");
     
-    clock_t start, end;
-    double cpu_time_used;
-    start = clock();
-    
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
+
     Graph mst = {};
     char* filename = argv[1];
     int nodes = ld_weights(filename);
     int edges;
     int cost = get_mst(mst, edges);
     
-    end = clock();
-    cpu_time_used = 1000 * ((double) (end - start)) / CLOCKS_PER_SEC;
+    clock_gettime(CLOCK_REALTIME, &end);
     
-    printf("Total Execution Time = %f ms\n", cpu_time_used);
+    double result = 0;
+    result = 1000 * (end.tv_sec - start.tv_sec);
+    result += (end.tv_nsec - start.tv_nsec) / 1e6;
+    printf("Total Execution Time = %f ms\n", result);
+    
     printf("Minimum Cost = %d\n", cost);
     printf("Minimum Spanning Tree (T):\n");
-    print_mst(mst, edges);
+    //print_mst(mst, edges);
 }
