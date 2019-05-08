@@ -10,82 +10,110 @@ void handle_error(const char* str) {
     exit(1);
 }
 
-struct Edge;
+// -----------------
+// Type declarations
 
+struct Edge;
 typedef int Node;
-typedef std::forward_list<Edge> Bucket;
-typedef Edge Graph[5000];
+typedef Edge Graph[100];
+typedef std::forward_list<Edge> EdgeList;
 
 struct Edge {
     Node N1;
     Node N2;
     int weight;
-    int subtree;
 };
 
-// node_subtree[node] yeilds the initial subtree for a node
-// the returned result is probably stale. See follow_tree
+// ---------------
+// Weight Iterator
+
+// The WeightIterator namespace simply qualifies two global variables.
+// It essentially allows me to group all edges with the same weight
+// without sorting by weight. The maximum weight should not extend
+// beyond 100 according to the requirements, and the maximum weight
+// in the largest given file is 290. I presume 500 will be enough.
+//
+namespace WeightIterator {
+    int num_weights = 0;
+    EdgeList buckets[500] = {};
+};
+
+// --------------------------------
+// Union-Find methods and variables
+
+
+// node_subtree[node] yeilds the initial subtree for a given node.
+// The returned result is probably stale. Use follow_tree to find
+// the real subtree.
+//
+// 101 elements because the maximum index is the node 100
+//
 int node_subtree[101] = {};
 
-// initially, follow_tree[n] = n
-// After some merges, follow_tree[n] = ?
-// the returned result MAY be stale, so iterate until
-// follow_tree[n] = n
+// follow_tree[subtree] == subtree
+// if that is not true, we follow the result of follow_tree[subtree]
+//
 int follow_tree[50] = {};
 
-void merge_subtree(int s1, int s2) {
+// This method in itself leaves stale entries. This method was made
+// for readability. Some of the merging magic happens later when
+// stale entries get updated.
+//
+inline void merge_subtree(int s1, int s2) {
     follow_tree[s1] = follow_tree[s2];
 }
 
-// before lookup_subtree is used, node_subtree should be initialized
-// in parallel to follow_tree. This is so that '0' means uninitialized
-// instead of indicating the original subtree was valid, or the lookup
-// did not need to be looped.
-int lookup_subtree(Node n) {
+// Before lookup_subtree is used, the result of node_subtree should
+// be initialized for follow_tree. This is so that a result of '0'
+// indicates the node does not belong to a subtree yet.
+//
+inline int lookup_subtree(Node n) {
     int subtree;
     int result = node_subtree[n];
     do {
         subtree = result;
         result = follow_tree[subtree];
     } while (result != subtree);
-
+    
     // update cached result
     node_subtree[n] = result;
     
     return result;
 }
 
-namespace WeightIterator {
-    int num_weights = 0;
-    Bucket buckets[500] = {};
-};
+// -------------------------------
+// Minimum Spanning Tree Algorithm
 
-const int INF = 1073741824;
 
-inline void skip_lines(std::istream& in, size_t n) {
-    for (; n; --n)
-        in.ignore(32, '\n');
-}
-
-void print_mst(Graph mst, int edges) {
-    for (int i = 0; i < edges; i++) {
-        //printf("(%d, %d)\n", mst[i].N1, mst[i].N2);
-        //printf("(%d, %d) = %d\n", mst[i].N1, mst[i].N2, mst[i].weight);
-    }
-}
-
-// populates the mst and total number of edges
-// returns: mst cost
+// get_mst populates the graph and total number of edges 
+//
+// I am using a varient of Kruskal's algorithm.
+//
+// A few global variables are referenced, namely:
+//  node_subtree,
+//  follow_tree,
+//  WeightIterator::buckets
+//  WeightIterator::num_weights
+//
+// Normally I'd group these into objects then pass them as reference,
+// but I'm avoiding objects because of a percieved speed disadvantage.
+// Normally, I wouldn't be concerned about something so miniscule, but
+// this lab is competitively graded for speed.
+//
+// I realize premature optimization and global variables are evil.
+// Anyways..
+//
+// The cost of all the edges in the graph is returned.
+//
 int get_mst(Graph mst, int &edges) {
-    using namespace WeightIterator;
     
     int cost = 0;
     int num_edges = 0;
     int next_subtree = 1;
     Edge e = {};
     
-    for (int i = 0; i < num_weights; i++) {
-        auto b = buckets[i];
+    for (int i = 0; i < WeightIterator::num_weights; i++) {
+        auto b = WeightIterator::buckets[i];
         for (auto it = b.begin(); it != b.end(); ++it) {
             e = *it;
             
@@ -110,30 +138,66 @@ int get_mst(Graph mst, int &edges) {
             } else {
                 merge_subtree(s1, s2);
             }
-
+            
             mst[num_edges++] = e;
             cost += e.weight;
         }
     }
-
+    
     edges = num_edges;
     return cost;
 }
 
+// ----------------------
+// Reading the Input File
+
+
+// For efficient reading of the file.
+inline void skip_lines(std::istream& in, size_t n) {
+    for (; n; --n) in.ignore(32, '\n');
+}
+
+// ld_weights reads from the file fname
+// 
+// The file is expected to have the general format:
+//
+// num_nodes
+// 1 1   weight
+// 1 2   weight
+// 1 3   weight
+// 1 ... weight
+// .
+// .
+// .
+// n n   weight
+//
+// The weight will have a value of 1073741824 if no connection between
+// nodes i and j exists.
+//
+// While reading the file in, the result is stored in a global array
+// of buckets indexed by weight (the maximum weight is reasonably low,
+// so we can index it in a normal array).
+//
+// This is how the buckets are indexed:
+//   WeightIterator::buckets[weight]
+//
+// The number of nodes is returned.
+//
 int ld_weights(char const *fname) {
     
-    using namespace WeightIterator;
     std::ifstream in(fname);
     if (!in)
         handle_error("file not found");
     
+    Edge e = {};
     int skip = 0;
+    int max_weight = 0;
     int i, j, weight;
+    const int NONE = 1073741824;
+    
     int nodes, lines;
     in >> nodes;
     lines = nodes * nodes;
-     
-    Edge e = {};
     
     for (int k = 0; k < lines; k++) {
         
@@ -151,26 +215,31 @@ int ld_weights(char const *fname) {
         }
         
         if (i == j) continue;
+        if (weight == NONE) continue;
         
-        if (weight == INF) {
-            continue;
-        }
-        
-        num_weights = (num_weights < weight ? weight : num_weights);
+        max_weight = (max_weight < weight ? weight : max_weight);
         e = {i, j, weight};
-        buckets[weight].push_front(e);
+        WeightIterator::buckets[weight].push_front(e);
     }
+    WeightIterator::num_weights = max_weight;
     in.close();
     return nodes;
+}
+
+// ------
+// Driver
+
+void print_mst(Graph mst, int edges) {
+    for (int i = 0; i < edges; i++) 
+        printf("(%d, %d)\n", mst[i].N1, mst[i].N2);
 }
 
 // usage: mst <filename>
 int main(int argc, char*argv[]) {
     
-    if (argc == 1) {
+    if (argc == 1) 
         handle_error("usage: mst <filename>");
-    }
-
+    
     clock_t start, end;
     double cpu_time_used;
     start = clock();
@@ -186,11 +255,6 @@ int main(int argc, char*argv[]) {
     
     printf("Total Execution Time = %f ms\n", cpu_time_used);
     printf("Minimum Cost = %d\n", cost);
-    //printf("Minimum Spanning Tree (T): (1,2) -> (2,4), (1,3) -> (3,5) -> (5,6)\n");
     printf("Minimum Spanning Tree (T):\n");
     print_mst(mst, edges);
-    
-    // 1) What would it take to print the MST like how the example gives it?
-    // 2) I should get rid of global variables
-    // 3) I should organize files
 }
